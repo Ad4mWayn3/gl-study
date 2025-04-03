@@ -4,5 +4,5 @@ out vec4 FragColor;
 uniform float redValue;
 
 void main() {
-	FragColor = vec4(redValue, vertColor.y, 1.0f - redValue, 1.0f);
+	FragColor = vec4(vertColor, 1.0f);
 }
