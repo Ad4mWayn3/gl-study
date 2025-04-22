@@ -28,23 +28,30 @@ public:
 	}
 
 	VertexArray& setAttrib(GLuint index, GLuint size, GLboolean normalized) {
+		glBindVertexArray(VAO);
 		glEnableVertexAttribArray(index);
 		GLfloat* begin = nullptr;
 		if (index != 0) {
+			GLuint prevSize=0;
 			glGetVertexAttribPointerv(index-1, GL_VERTEX_ATTRIB_ARRAY_POINTER,
 				(void**)&begin);
-			// get previous vertex size
+			glGetVertexAttribIuiv(index-1, GL_VERTEX_ATTRIB_ARRAY_SIZE,
+				&prevSize);
+			begin += prevSize;
 		}
 		glVertexAttribPointer(index, size, GL_FLOAT, normalized,
-			this->vertexSize, (GLvoid*)0); // TODO set the correct offset
+			this->vertexSize, (GLvoid*)begin);
+		glBindVertexArray(0);
+		return *this;
+	}
+
+	void draw() {
+		
+	}
+
+	~VertexArray() {
+		glDeleteBuffers(1, &VBO);
+		glDeleteBuffers(1, &EBO);
+		glDeleteVertexArrays(1, &VAO);
 	}
 };
-
-/*
-let renderer = Renderer::new()
-	.setAttrib(0, 2)
-	.setAttrib(1, 4)
-
-let triangle = renderer.newTriangle({0.2f, 0.1f}, {0.3f, 0.1f},
-	{0.8f, 0.2f}).indices();
-*/
