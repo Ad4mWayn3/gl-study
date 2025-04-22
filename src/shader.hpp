@@ -74,6 +74,14 @@ struct ShaderProgram {
 		return ShaderProgram::build(vertex, fragment);
 	}
 
+	static ShaderProgram buildPath(const char* vertexShaderPath,
+		const char* fragmentShaderPath) {
+		std::string vertexShaderSrc = readShaderFile(vertexShaderPath),
+			fragmentShaderSrc = readShaderFile(fragmentShaderPath);
+		
+		return buildSrc(vertexShaderSrc.c_str(), fragmentShaderSrc.c_str());
+	}
+
 	~ShaderProgram() {
 		glDeleteProgram(obj);
 	}
