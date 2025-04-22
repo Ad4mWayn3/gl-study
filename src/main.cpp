@@ -2,6 +2,7 @@
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <stb_image.h>
 
 #include <fstream>
 #include <iostream>
@@ -12,6 +13,16 @@ void frameBufferResize(GLFWwindow* window, int width, int height) {
 }
 
 struct { int w, h; } resolution { 1280, 700 };
+
+struct Texture {
+	GLuint id{};
+	GLint width{}, height{}, nrChannels{};
+	unsigned char* pixels{nullptr};
+
+	Texture& loadFromPath(const char* imagePath) {
+		pixels = stbi_load(imagePath, &width, &height, &nrChannels, 0);
+	}
+};
 
 int main() {
 	sizeof(unsigned char);
@@ -33,13 +44,12 @@ int main() {
 		std::cout << "Failed to initialize GLAD\n";
 		return -1;
 	}
-
 	
-	float square[24] = {
-		0.2f, 0.2f, 0.0f, 1.0f, 0.0f, 0.0f, // bottom left
-		0.8f, 0.2f, 0.0f, 0.0f, 1.0f, 0.0f, // bottom right
-		0.2f, 0.8f, 0.0f, 0.0f, 0.0f, 1.0f, // top left
-		0.8f, 0.8f, 0.0f, 1.0f, 1.0f, 1.0f, // top right
+	float square[32] = {
+		0.2f, 0.2f, 0.0f,	1.0f, 0.0f, 0.0f,	0.0f, 0.0f, // bottom left
+		0.8f, 0.2f, 0.0f,	0.0f, 1.0f, 0.0f,	1.0f, 0.0f, // bottom right
+		0.2f, 0.8f, 0.0f,	0.0f, 0.0f, 1.0f,	0.0f, 1.0f, // top left
+		0.8f, 0.8f, 0.0f,	1.0f, 1.0f, 1.0f,	1.0f, 1.0f, // top right
 	};
 
 	int squareIdxs[6] = {
@@ -48,6 +58,7 @@ int main() {
 	};
 
 	GLuint VBO=0, EBO=0, VAO=0;
+	GLuint texture;
 
 	glGenVertexArrays(1, &VAO);
 	glBindVertexArray(VAO);
@@ -62,24 +73,35 @@ int main() {
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(squareIdxs), squareIdxs,
 		GL_STATIC_DRAW);
 
+	glGenTextures(1, &texture);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	// axis wrapping
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+	// filtering
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+
+
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
+	glEnableVertexAttribArray(2);
 
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 6,
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 8,
 		(GLvoid*)0);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 6,
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 8,
 		(GLvoid*)(3 * sizeof(float)));
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 8,
+		(GLvoid*)(6 * sizeof(float)));
 
 //	unbind the array and attrib array, required if objects with different
 	// attributes will be defined
 //	glBindBuffer(GL_ARRAY_BUFFER, 0);
 //	glBindVertexArray(0);
 	
-	std::string vertexShaderSource = readShaderFile("src/vertex.glsl"),
-		fragmentShaderSource = readShaderFile("src/fragment.glsl");
-	
-	ShaderProgram program = ShaderProgram::buildSrc(vertexShaderSource.c_str(),
-		fragmentShaderSource.c_str());
+	ShaderProgram program = ShaderProgram::buildPath("src/vertex.glsl",
+		"src/fragment.glsl");
 	glUseProgram(program.obj);
 
 	glViewport(0,0, resolution.w, resolution.h);
@@ -132,9 +154,3 @@ int main() {
 
 	glfwTerminate();
 }
-
-/*
-	vertex buffer object: array of vertices
-	vertex array object: array of addresses that point to the begginning of each
-		vertex attribute
-*/
