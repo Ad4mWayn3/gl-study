@@ -1,5 +1,5 @@
 window: glad.o stb_image.o
-	@g++ src/main.cpp build/glad.o -o window -Iinclude -Llib -lglfw3 -lgdi32
+	@g++ src/main.cpp build/**.o -o window -Iinclude -Llib -lglfw3 -lgdi32
 	@./window
 
 glad.o: src/glad.c
