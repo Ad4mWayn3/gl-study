@@ -16,16 +16,40 @@ struct { int w, h; } resolution { 1280, 700 };
 
 struct Texture {
 	GLuint id{};
-	GLint width{}, height{}, nrChannels{};
-	unsigned char* pixels{nullptr};
+
+	static Texture generate() {
+		GLuint id{};
+		glGenTextures(1, &id);
+		return {id};
+	}
+
+	Texture& bind() { glBindTexture(GL_TEXTURE_2D, id); return *this; }
+	Texture& unbind() { glBindTexture(GL_TEXTURE_2D, 0); return *this; }
+
+	Texture& setParameter(GLenum pname, GLint param) {
+		glTexParameteri(GL_TEXTURE_2D, pname, param);
+		return *this;
+	}
 
 	Texture& loadFromPath(const char* imagePath) {
-		pixels = stbi_load(imagePath, &width, &height, &nrChannels, 0);
+		int width{}, height{}, nrChannels{};
+		stbi_set_flip_vertically_on_load(true);
+		unsigned char* pixels = stbi_load(imagePath, &width, &height,
+			&nrChannels, 0);
+
+		if (!pixels) {
+			std::cout << "Failed to load texture\n";
+			return *this;
+		}
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB,
+			GL_UNSIGNED_BYTE, pixels);
+		glGenerateMipmap(GL_TEXTURE_2D);
+		stbi_image_free(pixels);
+		return *this;
 	}
 };
 
 int main() {
-	sizeof(unsigned char);
 	glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -46,10 +70,10 @@ int main() {
 	}
 	
 	float square[32] = {
-		0.2f, 0.2f, 0.0f,	1.0f, 0.0f, 0.0f,	0.0f, 0.0f, // bottom left
-		0.8f, 0.2f, 0.0f,	0.0f, 1.0f, 0.0f,	1.0f, 0.0f, // bottom right
-		0.2f, 0.8f, 0.0f,	0.0f, 0.0f, 1.0f,	0.0f, 1.0f, // top left
-		0.8f, 0.8f, 0.0f,	1.0f, 1.0f, 1.0f,	1.0f, 1.0f, // top right
+		-0.2f, -0.2f, 0.0f,	1.0f, 0.0f, 0.0f,	0.0f, 0.0f, // bottom left
+		0.8f, -0.2f, 0.0f,	0.0f, 1.0f, 0.0f,	1.0f, 0.0f, // bottom right
+		-0.2f, 0.8f, 0.0f,	0.0f, 0.0f, 1.0f,	0.0f, 1.0f, // top left
+		0.8f, 0.8f, 0.0f,	1.0f, 1.0f, 0.0f,	1.0f, 1.0f, // top right
 	};
 
 	int squareIdxs[6] = {
@@ -57,8 +81,16 @@ int main() {
 		1, 2, 3,
 	};
 
+	auto trollcake = Texture::generate()
+		.bind()
+		.loadFromPath("resources/trollcake.jpg")
+		.setParameter(GL_TEXTURE_WRAP_S, GL_REPEAT)
+		.setParameter(GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT)
+		.setParameter(GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR)
+		.setParameter(GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+		.unbind();
+
 	GLuint VBO=0, EBO=0, VAO=0;
-	GLuint texture;
 
 	glGenVertexArrays(1, &VAO);
 	glBindVertexArray(VAO);
@@ -72,17 +104,6 @@ int main() {
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(squareIdxs), squareIdxs,
 		GL_STATIC_DRAW);
-
-	glGenTextures(1, &texture);
-	glBindTexture(GL_TEXTURE_2D, texture);
-	// axis wrapping
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
-	// filtering
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-
 
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
@@ -139,6 +160,8 @@ int main() {
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		// bind if another object was drawn previously;
+		trollcake.bind();
+//		glBindTexture(GL_TEXTURE_2D, id);
 //		glBindVertexArray(VAO);
 //		glBindBuffer(GL_ARRAY_BUFFER, VBO);
 //		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
