@@ -3,6 +3,9 @@
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <stb_image.h>
 
 #include <fstream>
@@ -13,29 +16,35 @@ void frameBufferResize(GLFWwindow* window, int width, int height) {
 	glViewport(0,0, width, height);
 }
 
-struct { int w, h; } resolution { 1024, 700 };
-
-int main() {
+GLFWwindow* GLFWwindow_create(int width, int height, const char* title){
 	glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-	GLFWwindow* window = glfwCreateWindow(resolution.w, resolution.h, "textures",
+	GLFWwindow* window = glfwCreateWindow(width, height, title,
 		NULL, NULL);
 	
 	if (!window) {
 		std::cout << "Failed to create GLFW window\n";
 		glfwTerminate();
-		return -1;
+		return nullptr;
 	}
 	glfwSetFramebufferSizeCallback(window, frameBufferResize);
 	glfwMakeContextCurrent(window);
 	
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) { 
 		std::cout << "Failed to initialize GLAD\n";
-		return -1;
+		return nullptr;
 	}
+
+	glViewport(0,0, width, height);
+	return window;
+}
+
+int main() {
+	auto window = GLFWwindow_create(800, 600, "gl study!");
+	if (!window) return -1;
 	
 	float square[32] = {
 		-0.2f, -0.2f, 0.0f,	1.0f, 0.0f, 0.0f,	0.0f, 0.0f, // bottom left
@@ -48,21 +57,6 @@ int main() {
 		0, 1, 2,
 		1, 2, 3,
 	};
-
-	stbi_set_flip_vertically_on_load(true);
-	auto trollcake = Texture::generate(GL_TEXTURE0)
-		.setParameter(GL_TEXTURE_WRAP_S, GL_REPEAT)
-		.setParameter(GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT)
-		.setParameter(GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR)
-		.setParameter(GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-		.bind()
-		.loadFromPath("resources/trollcake.jpg")
-		.unbind();
-	
-	auto derpina = Texture::generate(GL_TEXTURE1)
-		.bind()
-		.loadFromPath("resources/derpina.jpg")
-		.unbind();
 
 	GLuint VBO=0, EBO=0, VAO=0;
 
@@ -90,10 +84,28 @@ int main() {
 	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 8,
 		(GLvoid*)(6 * sizeof(float)));
 
+	stbi_set_flip_vertically_on_load(true);
+	auto trollcake = Texture::generate(GL_TEXTURE0)
+		.setParameter(GL_TEXTURE_WRAP_S, GL_REPEAT)
+		.setParameter(GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT)
+		.setParameter(GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR)
+		.setParameter(GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+		.bind()
+		.loadFromPath("resources/trollcake.jpg")
+		.unbind();
+	
+	auto derpina = Texture::generate(GL_TEXTURE1)
+		.bind()
+		.loadFromPath("resources/derpina.jpg")
+		.unbind();
+
 //	unbind the array and attrib array, required if objects with different
 	// attributes will be defined
 //	glBindBuffer(GL_ARRAY_BUFFER, 0);
 //	glBindVertexArray(0);
+
+	auto transform = glm::mat4(1.);
+//	transform = glm::scale(
 	
 	ShaderProgram program = ShaderProgram::buildPath("src/vertex.glsl",
 		"src/fragment.glsl");
@@ -101,7 +113,6 @@ int main() {
 	glUniform1i(glGetUniformLocation(program.obj, "tex"), 0);
 	glUniform1i(glGetUniformLocation(program.obj, "tex2"), 1);
 
-	glViewport(0,0, resolution.w, resolution.h);
 	GLfloat alpha = 0.2f;
 
 	struct {
@@ -153,4 +164,5 @@ int main() {
 	glDeleteBuffers(1, &EBO);
 
 	glfwTerminate();
+	return 0;
 }
