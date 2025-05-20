@@ -1,12 +1,14 @@
-objects = $(wildcard *.o)
+objects = build/texture.o build/shader.o build/glad.o build/stb_image.o \
+	build/glm.hpp.gch
 
-window: build/$(objects) build/glm.hpp.gch
+window: $(objects)
 	@echo Compiling main and linking object files
 	@g++ src/main.cpp build/**.o -o window -Iinclude -Ibuild -Llib -lglfw3 -lgdi32
 	@./window
 
-clean:
-	@echo This target is not yet done.
+clear:
+	@echo Cleaning build...
+	@rm -f build/**o build/glm.hpp.gch window.exe
 
 build/texture.o: src/texture.cpp src/texture.hpp
 	@echo Compiling texture.cpp
@@ -20,10 +22,10 @@ build/glad.o: src/glad.c
 	@echo Compiling glad
 	gcc -c src/glad.c -o build/glad.o -Iinclude/ -Llib/ -lgdi32
 
-build/glm.hpp.gch: src/glm.hpp
-	@echo Precompiling glm header files
-	g++ src/glm.hpp -o build/glm.hpp.gch -Iinclude/
-
 build/stb_image.o: src/stb_image.c
 	@echo Compiling stb_image
 	gcc -c src/stb_image.c -o build/stb_image.o -Iinclude/
+
+build/glm.hpp.gch: src/glm.hpp
+	@echo Precompiling glm header files
+	g++ src/glm.hpp -o build/glm.hpp.gch -Iinclude/
