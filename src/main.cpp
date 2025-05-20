@@ -1,11 +1,9 @@
 #include "shader.hpp"
 #include "texture.hpp"
+#include "glm.hpp"
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
 #include <stb_image.h>
 
 #include <fstream>
@@ -113,37 +111,38 @@ int main() {
 	glUniform1i(glGetUniformLocation(program.obj, "tex"), 0);
 	glUniform1i(glGetUniformLocation(program.obj, "tex2"), 1);
 
-	GLfloat alpha = 0.2f;
-
 	struct {
 		GLint id;
 		float value;
 	} redValue { glGetUniformLocation(program.obj, "redValue"), 0 };
 
+	float mixValue = 0.f;
 	float delta = 0;
 	float currTime = glfwGetTime();
+
+	auto zigzag = [](float x) -> float {
+		return 2. * glm::abs(x/2. - glm::floor(x/2. + 1./2.));
+	};
 
 	while (!glfwWindowShouldClose(window)) {
 		delta = glfwGetTime() - currTime;
 		currTime += delta;
 		redValue.value += delta;
 		if (redValue.value > 1) redValue.value -= 1;
-		glUniform1f(redValue.id, redValue.value);
+		glUniform1f(redValue.id, zigzag(currTime));
 
 		if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
-			alpha += 0.0005f;
-			if (alpha > 1.0f) {
-				1.0f;
-			}
+			mixValue += 1.f * delta;
 		}
 		if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
-			alpha -= 0.0005f;
-			if (alpha < 0) {
-				alpha = 0.0f;
-			}
+			mixValue -= 1.f * delta;
 		}
+		
+		auto red = glm::vec3(1., 0., 0.);
+		auto cyan = glm::vec3(0., 1., 1.);
+		auto clearColor = glm::mix(red, cyan, zigzag(mixValue));
 
-		glClearColor(alpha, 0.1f, 0.4f, 0.2f);
+		glClearColor(clearColor.r, clearColor.g, clearColor.b, 1.);
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		// bind if another object was drawn previously;
