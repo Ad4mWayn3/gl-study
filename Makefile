@@ -6,7 +6,7 @@ window: build/$(objects) build/glm.hpp.gch
 	@./window
 
 clean:
-	
+	@echo This target is not yet done.
 
 build/texture.o: src/texture.cpp src/texture.hpp
 	@echo Compiling texture.cpp
