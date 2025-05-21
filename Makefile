@@ -3,7 +3,7 @@ objects = build/texture.o build/shader.o build/glad.o build/stb_image.o \
 
 window: $(objects)
 	@echo Compiling main and linking object files
-	@g++ src/main.cpp build/**.o -o window -Iinclude -Ibuild -Llib -lglfw3 -lgdi32
+	g++ src/main.cpp build/**.o -o window -Iinclude -Ibuild -Llib -lglfw3 -lgdi32
 	@./window
 
 clear:
