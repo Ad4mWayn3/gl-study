@@ -72,6 +72,10 @@ ShaderProgram ShaderProgram::buildPath(const char* vertexShaderPath,
 	return buildSrc(vertexShaderSrc.c_str(), fragmentShaderSrc.c_str());
 }
 
+GLuint ShaderProgram::getUniformId(const char* name) {
+	return glGetUniformLocation(obj, name);
+}
+
 ShaderProgram::~ShaderProgram() {
 	glDeleteProgram(obj);
 }

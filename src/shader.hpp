@@ -17,6 +17,8 @@ struct ShaderProgram {
 
 	static ShaderProgram build(Shader vertex, Shader fragment);
 
+	GLuint getUniformId(const char* name);
+
 // preferred, it deletes the shaders immediately after returning the shader
 	// program.
 	static ShaderProgram buildSrc(const char* vertexShaderSource,

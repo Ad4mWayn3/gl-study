@@ -30,7 +30,7 @@ GLFWwindow* GLFWwindow_create(int width, int height, const char* title){
 	}
 	glfwSetFramebufferSizeCallback(window, frameBufferResize);
 	glfwMakeContextCurrent(window);
-	
+
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) { 
 		std::cout << "Failed to initialize GLAD\n";
 		return nullptr;
@@ -41,21 +41,49 @@ GLFWwindow* GLFWwindow_create(int width, int height, const char* title){
 }
 
 int main() {
-	auto window = GLFWwindow_create(800, 600, "gl study!");
+	struct { int w, h; } resolution {800, 600};
+	auto window = GLFWwindow_create(resolution.w, resolution.h, "gl study!");
 	if (!window) return -1;
+	glEnable(GL_DEPTH_TEST);
 	
-	float square[32] = {
-		-0.2f, -0.2f, 0.0f,	1.0f, 0.0f, 0.0f,	0.0f, 0.0f, // bottom left
-		0.8f, -0.2f, 0.0f,	0.0f, 1.0f, 0.0f,	1.0f, 0.0f, // bottom right
-		-0.2f, 0.8f, 0.0f,	0.0f, 0.0f, 1.0f,	0.0f, 1.0f, // top left
-		0.8f, 0.8f, 0.0f,	1.0f, 1.0f, 0.0f,	1.0f, 1.0f, // top right
+	float square[] = {
+		// front vertices
+		-.2f, -.2f, 0.f,	0.0f, 0.0f, // bottom left
+		.8f,  -.2f, 0.f,	1.0f, 0.0f, // bottom right
+		-.2f,  .8f, 0.f,	0.0f, 1.0f, // top left
+		.8f,   .8f, 0.f,	1.0f, 1.0f, // top right
+
+		// back vertices
+		-.2f, -.2f, .8f,	1.0f, 1.0f, // bottom left
+		.8f,  -.2f, .8f,	0.0f, 1.0f, // bottom right
+		-.2f,  .8f, .8f,	1.0f, 0.0f, // top left
+		.8f,   .8f, .8f,	0.0f, 0.0f, // top right
 	};
 
-	int squareIdxs[6] = {
+	GLsizei stride = 5 * sizeof(float);
+
+	int squareIdxs[] = {
+		//front
 		0, 1, 2,
 		1, 2, 3,
+		//back
+		4, 5, 6,
+		5, 6, 7,
+		//bottom
+		0, 1, 4,
+		1, 4, 5,
+		//top
+		2, 7, 3,
+		7, 3, 6,
+		// //left
+		// 2, 0, 7,
+		// 0, 7, 4,
+		// //right
+		// 3, 1, 6,
+		// 1, 6, 5,
 	};
 
+#pragma region gpu vertex config
 	GLuint VBO=0, EBO=0, VAO=0;
 
 	glGenVertexArrays(1, &VAO);
@@ -64,28 +92,35 @@ int main() {
 	glGenBuffers(1, &VBO);
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(square), square,
-		GL_STATIC_DRAW);
+		GL_DYNAMIC_DRAW);
 
 	glGenBuffers(1, &EBO);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(squareIdxs), squareIdxs,
-		GL_STATIC_DRAW);
+		GL_DYNAMIC_DRAW);
 
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
 	glEnableVertexAttribArray(2);
 
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 8,
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride,
 		(GLvoid*)0);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 8,
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride,
 		(GLvoid*)(3 * sizeof(float)));
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 8,
-		(GLvoid*)(6 * sizeof(float)));
+	//	unbind the array and attrib array, required if objects with different
+	//  attributes will be defined
+	//	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	//	glBindVertexArray(0);
+#pragma endregion
+	
+	ShaderProgram program = ShaderProgram::buildPath("src/vertex.glsl",
+		"src/fragment.glsl");
+//	glUseProgram(program.obj);
 
 	stbi_set_flip_vertically_on_load(true);
 	auto trollcake = Texture::generate(GL_TEXTURE0)
 		.setParameter(GL_TEXTURE_WRAP_S, GL_REPEAT)
-		.setParameter(GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT)
+		.setParameter(GL_TEXTURE_WRAP_T, GL_REPEAT)
 		.setParameter(GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR)
 		.setParameter(GL_TEXTURE_MAG_FILTER, GL_LINEAR)
 		.bind()
@@ -96,18 +131,7 @@ int main() {
 		.bind()
 		.loadFromPath("resources/derpina.jpg")
 		.unbind();
-
-//	unbind the array and attrib array, required if objects with different
-	// attributes will be defined
-//	glBindBuffer(GL_ARRAY_BUFFER, 0);
-//	glBindVertexArray(0);
-
-	auto transform = glm::mat4(1.);
-//	transform = glm::scale(
 	
-	ShaderProgram program = ShaderProgram::buildPath("src/vertex.glsl",
-		"src/fragment.glsl");
-	glUseProgram(program.obj);
 	glUniform1i(glGetUniformLocation(program.obj, "tex"), 0);
 	glUniform1i(glGetUniformLocation(program.obj, "tex2"), 1);
 
@@ -116,7 +140,7 @@ int main() {
 		float value;
 	} redValue { glGetUniformLocation(program.obj, "redValue"), 0 };
 
-	float mixValue = 0.f;
+	float mixValue = 0.5f;
 	float delta = 0;
 	float currTime = glfwGetTime();
 
@@ -125,12 +149,37 @@ int main() {
 	};
 
 	while (!glfwWindowShouldClose(window)) {
+//		glfwGetWindowSize(window, &resolution.h, &resolution.h);
+		
 		delta = glfwGetTime() - currTime;
 		currTime += delta;
-		redValue.value += delta;
-		if (redValue.value > 1) redValue.value -= 1;
-		glUniform1f(redValue.id, zigzag(currTime));
+		
+#pragma region matrices
+		auto model = glm::mat4(1.);
+		auto view = glm::mat4(1.);
+		auto projection = glm::mat4(1.);
+		
+		GLuint modelLoc = program.getUniformId("model"),
+			viewLoc = program.getUniformId("view"),
+			projectionLoc = program.getUniformId("projection");
 
+		model = glm::rotate(model, currTime * glm::radians(-55.0f),
+			glm::vec3(0.5f,1.0f, 0.f));
+		view = glm::translate(view, glm::vec3(0.f, 0.f, -3.f));
+		projection = glm::perspective(glm::radians(45.0f),
+			(float)resolution.w / resolution.h, 0.1f, 100.0f);
+		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+		glUniformMatrix4fv(viewLoc, 1, GL_FALSE, &view[0][0]);
+		glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+#pragma endregion
+			
+		glUniform1f(redValue.id, zigzag(mixValue));
+
+/*		auto vertexBuffer = (float*)glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
+		vertexBuffer[25] = glm::sin(currTime * 2.)/2. + 1./2.;
+		vertexBuffer[8] = zigzag(currTime);
+		glUnmapBuffer(GL_ARRAY_BUFFER);
+*/
 		if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
 			mixValue += 1.f * delta;
 		}
@@ -152,7 +201,7 @@ int main() {
 //		glBindVertexArray(VAO);
 //		glBindBuffer(GL_ARRAY_BUFFER, VBO);
 //		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+		glDrawElements(GL_TRIANGLES, std::size(squareIdxs), GL_UNSIGNED_INT, nullptr);
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
