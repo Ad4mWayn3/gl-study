@@ -54,10 +54,10 @@ int main() {
 		.8f,   .8f, 0.f,	1.0f, 1.0f, // top right
 
 		// back vertices
-		-.2f, -.2f, .8f,	1.0f, 1.0f, // bottom left
-		.8f,  -.2f, .8f,	0.0f, 1.0f, // bottom right
-		-.2f,  .8f, .8f,	1.0f, 0.0f, // top left
-		.8f,   .8f, .8f,	0.0f, 0.0f, // top right
+		-.2f, -.2f, 1.f,	1.0f, 1.0f, // bottom left
+		.8f,  -.2f, 1.f,	0.0f, 1.0f, // bottom right
+		-.2f,  .8f, 1.f,	1.0f, 0.0f, // top left
+		.8f,   .8f, 1.f,	0.0f, 0.0f, // top right
 	};
 
 	GLsizei stride = 5 * sizeof(float);
@@ -74,13 +74,13 @@ int main() {
 		1, 4, 5,
 		//top
 		2, 7, 3,
-		7, 3, 6,
-		// //left
-		// 2, 0, 7,
-		// 0, 7, 4,
-		// //right
-		// 3, 1, 6,
-		// 1, 6, 5,
+		7, 2, 6,
+		//left
+		0, 2, 4,
+		2, 4, 6,
+		//right
+		1, 3, 5,
+		3, 5, 7,
 	};
 
 #pragma region gpu vertex config
@@ -115,7 +115,7 @@ int main() {
 	
 	ShaderProgram program = ShaderProgram::buildPath("src/vertex.glsl",
 		"src/fragment.glsl");
-//	glUseProgram(program.obj);
+	glUseProgram(program.obj);
 
 	stbi_set_flip_vertically_on_load(true);
 	auto trollcake = Texture::generate(GL_TEXTURE0)
@@ -141,37 +141,40 @@ int main() {
 	} redValue { glGetUniformLocation(program.obj, "redValue"), 0 };
 
 	float mixValue = 0.5f;
-	float delta = 0;
-	float currTime = glfwGetTime();
+	float delta = 0.f;
+	float currTime = 0.f;
 
 	auto zigzag = [](float x) -> float {
 		return 2. * glm::abs(x/2. - glm::floor(x/2. + 1./2.));
 	};
+	
+	
+#pragma region matrices
+	auto id4x4 = glm::mat4(1.);
+	
+	GLuint modelLoc = program.getUniformId("model"),
+		viewLoc = program.getUniformId("view"),
+		projectionLoc = program.getUniformId("projection");
 
+	auto model = glm::rotate(id4x4, currTime * glm::radians(-55.0f),
+		glm::vec3(0.5f,1.0f, 0.f));
+	auto view = glm::translate(id4x4, glm::vec3(0.f, 0.f, -3.f));
+	auto projection = glm::perspective(glm::radians(45.0f),
+		(float)resolution.w / resolution.h, 0.1f, 100.0f);
+	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+	glUniformMatrix4fv(viewLoc, 1, GL_FALSE, &view[0][0]);
+	glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+#pragma endregion
+	
 	while (!glfwWindowShouldClose(window)) {
-//		glfwGetWindowSize(window, &resolution.h, &resolution.h);
-		
+		glfwGetWindowSize(window, &resolution.h, &resolution.h);
+
 		delta = glfwGetTime() - currTime;
 		currTime += delta;
-		
-#pragma region matrices
-		auto model = glm::mat4(1.);
-		auto view = glm::mat4(1.);
-		auto projection = glm::mat4(1.);
-		
-		GLuint modelLoc = program.getUniformId("model"),
-			viewLoc = program.getUniformId("view"),
-			projectionLoc = program.getUniformId("projection");
 
-		model = glm::rotate(model, currTime * glm::radians(-55.0f),
-			glm::vec3(0.5f,1.0f, 0.f));
-		view = glm::translate(view, glm::vec3(0.f, 0.f, -3.f));
-		projection = glm::perspective(glm::radians(45.0f),
-			(float)resolution.w / resolution.h, 0.1f, 100.0f);
+		model = glm::rotate(id4x4, currTime * glm::radians(-55.f),
+			glm::vec3(.5f, 1.f, 0.f));
 		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-		glUniformMatrix4fv(viewLoc, 1, GL_FALSE, &view[0][0]);
-		glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-#pragma endregion
 			
 		glUniform1f(redValue.id, zigzag(mixValue));
 
@@ -192,7 +195,7 @@ int main() {
 		auto clearColor = glm::mix(red, cyan, zigzag(mixValue));
 
 		glClearColor(clearColor.r, clearColor.g, clearColor.b, 1.);
-		glClear(GL_COLOR_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		// bind if another object was drawn previously;
 		trollcake.bind();

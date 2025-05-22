@@ -15,6 +15,6 @@ void main() {
 	mat4 transform = projection * view * model;
 //	transform = (transform * (1.0 - redValue)) + (mat4(1.) * redValue);
 
-	gl_Position = transform * vec4(aPos, 1.0);
+	gl_Position = transform * (vec4(aPos, 1.0) + vec4(-.3, -.3, 0., 0.));
 	texCoord = aTexCoord;
 }
