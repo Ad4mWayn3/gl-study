@@ -7,14 +7,9 @@
 struct Texture {
 	GLuint id{};
 	GLenum unitIndex{};
-
 	static Texture generate(GLenum unitIndex);
-
 	Texture& bind();
-
 	Texture& unbind();
-
-	Texture& setParameter(GLenum pname, GLint param);
-
+	static void setParameter(GLenum pname, GLint param);
 	Texture& loadFromPath(const char* imagePath);
 };

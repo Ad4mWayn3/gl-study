@@ -18,9 +18,8 @@ Texture& Texture::unbind() {
 	return *this;
 }
 
-Texture& Texture::setParameter(GLenum pname, GLint param) {
+void Texture::setParameter(GLenum pname, GLint param) {
 	glTexParameteri(GL_TEXTURE_2D, pname, param);
-	return *this;
 }
 
 Texture& Texture::loadFromPath(const char* imagePath) {
