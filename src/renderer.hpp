@@ -1,3 +1,5 @@
+#pragma once
+
 #include "glm.hpp"
 #include "shader.hpp"
 #include "texture.hpp"
@@ -60,55 +62,17 @@ struct Mesh {
 	GLsizei stride;
 	GLuint VBO, VAO, EBO;
 	static Mesh create(std::vector<float>&& vertices,
-		std::vector<int>&& indices) {
-		Mesh out;
-		out.vertices = vertices;
-		out.indices = indices;
-		out.stride = 5 * sizeof(float);
-		
-		GLuint VBO=0, EBO=0, VAO=0;
-		glGenVertexArrays(1, &VAO);
-		glBindVertexArray(VAO);
-
-		glGenBuffers(1, &VBO);
-		glBindBuffer(GL_ARRAY_BUFFER, VBO);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(out.vertices), out.vertices.data(),
-			GL_DYNAMIC_DRAW);
-		assert(sizeof(out.vertices) == 
-			out.vertices.size() * sizeof(out.vertices[0]));
-
-		glGenBuffers(1, &EBO);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(out.indices),
-			out.indices.data(), GL_DYNAMIC_DRAW);
-		assert(sizeof(out.indices) ==
-			out.indices.size() * sizeof(out.indices[0]));
-
-		glEnableVertexAttribArray(0);
-		glEnableVertexAttribArray(1);
-		glEnableVertexAttribArray(2);
-
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, out.stride,
-			(GLvoid*)0);
-		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, out.stride,
-			(GLvoid*)(3 * sizeof(float)));
-		out.VBO = VBO;
-		out.VAO = VAO;
-		out.EBO = EBO;
-		return out;
-	}
+		std::vector<int>&& indices);
 };
 
 struct Renderer {
 	Uniform<Camera> cameraU;
 	Uniform<glm::mat4> model, view, projection;
 	Uniform<Texture> trollcake, derpina;
-	Uniform<float> redValue;
 	Mesh mesh;
 	GLFWwindow* window;
-	GLuint VBO, EBO, VAO;
 	ShaderProgram program;
-
+	Renderer(GLFWwindow* window);
 	static Renderer init(GLFWwindow* window);
 	void process(Seconds delta, glm::vec4 clearColor);
 };
@@ -143,7 +107,45 @@ GLFWwindow* GLFWwindow_create(int width, int height, const char* title){
 	return window;
 }
 
-Renderer Renderer::init(GLFWwindow* window) {
+Mesh Mesh::create(std::vector<float>&& vertices, std::vector<int>&& indices) {
+	Mesh out;
+	out.vertices = vertices;
+	out.indices = indices;
+	out.stride = 5 * sizeof(float);
+	
+	GLuint VBO=0, EBO=0, VAO=0;
+	glGenVertexArrays(1, &VAO);
+	glBindVertexArray(VAO);
+
+	glGenBuffers(1, &VBO);
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBufferData(GL_ARRAY_BUFFER, out.vertices.size() * sizeof(out.vertices[0]),
+		out.vertices.data(), GL_DYNAMIC_DRAW);
+//	assert(sizeof(out.vertices) == 
+//		out.vertices.size() * sizeof(out.vertices[0]));
+
+	glGenBuffers(1, &EBO);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, out.indices.size() * sizeof(out.indices[0]),
+		out.indices.data(), GL_DYNAMIC_DRAW);
+//	assert(sizeof(out.indices) ==
+//		out.indices.size() * sizeof(out.indices[0]));
+
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+	glEnableVertexAttribArray(2);
+
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, out.stride,
+		(GLvoid*)0);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, out.stride,
+		(GLvoid*)(3 * sizeof(float)));
+	out.VBO = VBO;
+	out.VAO = VAO;
+	out.EBO = EBO;
+	return out;
+}
+
+Renderer::Renderer(GLFWwindow* window) {
 	glEnable(GL_DEPTH_TEST);
 	int w=0, h=0;
 	glfwGetWindowSize(window, &w, &h);
@@ -182,28 +184,31 @@ Renderer Renderer::init(GLFWwindow* window) {
 		1, 3, 5,
 		3, 5, 7,
 	};
-	auto cube = Mesh::create(std::move(vertices), std::move(indices));
+	mesh = Mesh::create(std::move(vertices), std::move(indices));
 	
-	ShaderProgram program = ShaderProgram::buildPath("src/vertex.glsl",
+	program = ShaderProgram::buildPath("src/vertex.glsl",
 		"src/fragment.glsl");
 	glUseProgram(program.obj);
 
-	{ // texture parameter config
+	{ // texture init
 		stbi_set_flip_vertically_on_load(true);
 		Texture::setParameter(GL_TEXTURE_WRAP_S, GL_REPEAT);
 		Texture::setParameter(GL_TEXTURE_WRAP_T, GL_REPEAT);
 		Texture::setParameter(GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 		Texture::setParameter(GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		trollcake = Uniform<Texture>::create(
+			(Texture&&)Texture::generate(GL_TEXTURE0)
+				.bind()
+				.loadFromPath("resources/trollcake.jpg")
+				.unbind(),
+			program.obj, "tex");
+		derpina = Uniform<Texture>::create(
+			(Texture&&)Texture::generate(GL_TEXTURE1)
+				.bind()
+				.loadFromPath("resources/derpina.jpg")
+				.unbind(),
+			program.obj, "tex2");
 	}
-
-	auto trollcake = Texture::generate(GL_TEXTURE0)
-		.bind()
-		.loadFromPath("resources/trollcake.jpg")
-		.unbind();
-	auto derpina = Texture::generate(GL_TEXTURE1)
-		.bind()
-		.loadFromPath("resources/derpina.jpg")
-		.unbind();
 	
 	glUniform1i(glGetUniformLocation(program.obj, "tex"), 0);
 	glUniform1i(glGetUniformLocation(program.obj, "tex2"), 1);
@@ -219,11 +224,11 @@ Renderer Renderer::init(GLFWwindow* window) {
 		return 2. * glm::abs(x/2. - glm::floor(x/2. + 1./2.));
 	};
 
-	auto camera = Uniform<Camera>::create(
+	cameraU = Uniform<Camera>::create(
 		Camera::fromTarget(glm::vec3(0.f, 0.f, 3.f),
 			glm::vec3(0.f, 0.f, 0.f)),
 		program.obj, "camera");
-	GLuint cameraLoc = program.getUniformId("camera");
+	//GLuint cameraLoc = program.getUniformId("camera");
 	
 #pragma region matrices
 	const auto id4x4 = glm::mat4(1.);
@@ -234,23 +239,27 @@ Renderer Renderer::init(GLFWwindow* window) {
 
 	auto model = glm::rotate(id4x4, currTime * glm::radians(-55.0f),
 		glm::vec3(0.5f,1.0f, 0.f));
-	auto view = glm::lookAt(camera.data.pos,
-		camera.data.getTarget(),
+	auto view = glm::lookAt(cameraU.data.pos,
+		cameraU.data.getTarget(),
 		glm::vec3(0.f, 1.f, 0.f));
 	auto projection = glm::perspective(glm::radians(45.0f),
 		(float)resolution.x / resolution.y, 0.1f, 100.0f);
 	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 	glUniformMatrix4fv(viewLoc, 1, GL_FALSE, &view[0][0]);
 	glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+	#define u(x) Uniform<glm::mat4>::assign(std::move(x), x##Loc)
+	this->model = u(model);
+	this->view = u(view);
+	this->projection = u(projection);
 #pragma endregion
-	Renderer r;
-	r.cameraU = std::move(camera);
-	r.window = window;
-	r.mesh = std::move(cube);
-	r.model = Uniform<glm::mat4>::assign(std::move(model), modelLoc);
-	r.view = Uniform<glm::mat4>::assign(std::move(view), viewLoc);
-	r.projection = Uniform<glm::mat4>::assign(std::move(projection), projectionLoc);
-	return r;
+	// Renderer r;
+	// r.cameraU = std::move(camera);
+	// r.window = window;
+	// r.mesh = std::move(cube);
+	// r.model = Uniform<glm::mat4>::assign(std::move(model), modelLoc);
+	// r.view = Uniform<glm::mat4>::assign(std::move(view), viewLoc);
+	// r.projection = Uniform<glm::mat4>::assign(std::move(projection), projectionLoc);
+	// return r;
 }
 
 void Renderer::process(Seconds delta, glm::vec4 clearColor) {
