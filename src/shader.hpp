@@ -14,6 +14,11 @@ struct Shader {
 
 struct ShaderProgram {
 	GLuint obj;
+	ShaderProgram(GLuint);
+	ShaderProgram(const ShaderProgram&) = delete;
+	ShaderProgram& operator=(const ShaderProgram&) = delete;
+	ShaderProgram(ShaderProgram&& program);
+	ShaderProgram& operator=(ShaderProgram&& program);
 	static ShaderProgram build(Shader vertex, Shader fragment);
 	GLuint getUniformId(const char* name);
 // preferred, it deletes the shaders immediately after returning the shader

@@ -39,22 +39,37 @@ Shader::~Shader() {
 	glDeleteShader(obj);
 }
 
-ShaderProgram ShaderProgram::build(Shader vertex, Shader fragment) {
-	GLuint shaderProgram = glCreateProgram();
-	GLcall(glAttachShader, shaderProgram, vertex.obj);
+ShaderProgram::ShaderProgram(GLuint _obj) : obj{_obj}{}
 
-	GLcall(glAttachShader, shaderProgram, fragment.obj);
-	glLinkProgram(shaderProgram);
+ShaderProgram::ShaderProgram(ShaderProgram&& program) {
+	obj = program.obj;
+	program.obj = 0;
+}
+
+ShaderProgram& ShaderProgram::operator=(ShaderProgram&& program) {
+	LOG("ShaderProgram::operator=()\n");
+	if (obj == program.obj) return *this;
+	obj = program.obj;
+	program.obj = 0;
+	return *this;
+}
+
+ShaderProgram ShaderProgram::build(Shader vertex, Shader fragment) {
+	GLuint program = glCreateProgram();
+	GLcall(glAttachShader, program, vertex.obj);
+
+	GLcall(glAttachShader, program, fragment.obj);
+	glLinkProgram(program);
 
 	GLint success = -1;
-	glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+	glGetProgramiv(program, GL_LINK_STATUS, &success);
 	if (!success) {
 		char infoLog[512];
-		glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+		glGetProgramInfoLog(program, 512, NULL, infoLog);
 		printf("Shader program linking failed\n%s\n", infoLog);
 	}
 
-	return ShaderProgram {shaderProgram};
+	return ShaderProgram {program};
 }
 
 ShaderProgram ShaderProgram::buildSrc(const char* vertexShaderSource,
@@ -78,6 +93,7 @@ GLuint ShaderProgram::getUniformId(const char* name) {
 }
 
 ShaderProgram::~ShaderProgram() {
+	if (!obj) return;
 	LOG("ShaderProgram::~ShaderProgram()\n");
 	glDeleteProgram(obj);
 }

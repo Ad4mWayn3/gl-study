@@ -68,7 +68,7 @@ Mesh Mesh::create(std::vector<float>&& vertices, std::vector<int>&& indices) {
 	return out;
 }
 
-Renderer::Renderer(GLFWwindow* window) {
+Renderer::Renderer(GLFWwindow* window) : program{0} {
 	glEnable(GL_DEPTH_TEST);
 	int w=0, h=0;
 	glfwGetWindowSize(window, &w, &h);
@@ -111,10 +111,8 @@ Renderer::Renderer(GLFWwindow* window) {
 	
 	// FIXME: for some reason, directly assigning the return value of buildPath
 	// into this->program immediately calls the ShaderProgram destructor.
-	auto program = ShaderProgram::buildPath("src/vertex.glsl",
+	program = (ShaderProgram&&)ShaderProgram::buildPath("src/vertex.glsl",
 		"src/fragment.glsl");
-	this->program = program;
-
 	glUseProgram(program.obj);
 	LOG("Renderer::Renderer(): glError %s\n", getErrorName(glGetError()));
 	
