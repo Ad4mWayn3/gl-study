@@ -41,8 +41,9 @@ Shader::~Shader() {
 
 ShaderProgram ShaderProgram::build(Shader vertex, Shader fragment) {
 	GLuint shaderProgram = glCreateProgram();
-	glAttachShader(shaderProgram, vertex.obj);
-	glAttachShader(shaderProgram, fragment.obj);
+	GLcall(glAttachShader, shaderProgram, vertex.obj);
+
+	GLcall(glAttachShader, shaderProgram, fragment.obj);
 	glLinkProgram(shaderProgram);
 
 	GLint success = -1;
@@ -77,5 +78,6 @@ GLuint ShaderProgram::getUniformId(const char* name) {
 }
 
 ShaderProgram::~ShaderProgram() {
+	LOG("ShaderProgram::~ShaderProgram()\n");
 	glDeleteProgram(obj);
 }
