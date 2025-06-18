@@ -1,3 +1,5 @@
+#include "logging.h"
+
 #include <glad/glad.h>
 
 #include <fstream>
