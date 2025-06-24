@@ -30,6 +30,18 @@ GLFWwindow* GLFWwindow_create(int width, int height, const char* title) {
 	return window;
 }
 
+glm::vec2 curPos(GLFWwindow* window) {
+	double x,y;
+	glfwGetCursorPos(window, &x, &y);
+	return {(float)x, (float)y};
+}
+
+glm::vec2 winRes(GLFWwindow* window) {
+	int x,y;
+	glfwGetWindowSize(window, &x, &y);
+	return {(float)x, (float)y};
+}
+
 Mesh Mesh::create(std::vector<float>&& vertices, std::vector<int>&& indices) {
 	Mesh out;
 	out.vertices = vertices;
@@ -73,6 +85,8 @@ Renderer::Renderer(GLFWwindow* window) : program{0} {
 	int w=0, h=0;
 	glfwGetWindowSize(window, &w, &h);
 	auto resolution = glm::vec2((float)w, (float)h);
+	this->window = window;
+	mousePos = curPos(window);
 
 	auto vertices = std::vector{
 		// front vertices
@@ -108,9 +122,7 @@ Renderer::Renderer(GLFWwindow* window) : program{0} {
 		3, 5, 7,
 	};
 	mesh = Mesh::create(std::move(vertices), std::move(indices));
-	
-	// FIXME: for some reason, directly assigning the return value of buildPath
-	// into this->program immediately calls the ShaderProgram destructor.
+
 	program = (ShaderProgram&&)ShaderProgram::buildPath("src/vertex.glsl",
 		"src/fragment.glsl");
 	glUseProgram(program.obj);
@@ -180,17 +192,80 @@ Renderer::Renderer(GLFWwindow* window) : program{0} {
 #pragma endregion
 }
 
+glm::quat rotor(glm::vec3 axis, double theta) {
+	LOG("rotor: axis.length() = %f\n", glm::length(axis));
+	assert(glm::length(axis) - 1.f < 2e-3f);
+	glm::quat out;
+	out.w = cos(theta/2.f);
+	float s = sin(theta/2.f);
+	out.x = axis.x * s;
+	out.y = axis.y * s;
+	out.z = axis.z * s;
+	return out;
+}
+
+void Renderer::processInput(Seconds delta) {
+	float rSpeed = glm::radians(42.f * delta);
+	float mSpeed = 1.f * delta;
+	auto roll = glm::cross(-cameraU.data.up, cameraU.data.right),
+		yaw = glm::cross(-cameraU.data.dir, cameraU.data.right),
+		pitch = glm::normalize(glm::cross(cameraU.data.pos, cameraU.data.up));
+	
+	if (mouseDelta.x != 0.f)
+		cameraU.data.rotate(rotor(yaw, mouseDelta.x));
+	if (mouseDelta.y != 0.f)
+		cameraU.data.rotate(rotor(pitch, mouseDelta.y));
+	
+	#define kpress(k) (glfwGetKey(window, k) == GLFW_PRESS)
+	if kpress(GLFW_KEY_R) {
+		cameraU.data.rotate(rotor(roll, rSpeed));
+	}
+	if kpress(GLFW_KEY_W) {
+		cameraU.data.rotate(rotor(roll, -rSpeed));
+	}
+	if kpress(GLFW_KEY_F) {
+		cameraU.data.rotate(rotor(yaw, rSpeed));
+	}
+	if kpress(GLFW_KEY_S) {
+		cameraU.data.rotate(rotor(yaw, -rSpeed));
+	}
+	if kpress(GLFW_KEY_E) {
+		cameraU.data.pos += cameraU.data.dir * mSpeed;
+		LOG("Renderer::processInput: camera.pos = {%f, %f, %f}\n",
+			cameraU.data.pos.x, cameraU.data.pos.y, cameraU.data.pos.z);
+	}
+	if kpress(GLFW_KEY_D) {
+		cameraU.data.pos -= cameraU.data.dir * mSpeed;
+		LOG("Renderer::processInput: camera.pos = {%f, %f, %f}\n",
+			cameraU.data.pos.x, cameraU.data.pos.y, cameraU.data.pos.z);
+	}
+	#undef kpress
+	assert(glGetError() == GL_NO_ERROR);
+}
+
 void Renderer::process(Seconds delta, glm::vec4 clearColor) {
+	assert(glGetError() == GL_NO_ERROR);
+	auto winR = winRes(window);
+	mouseDelta = curPos(window) - mousePos;
+	mouseDelta = mouseDelta / winR * 3.f;
+	mousePos = curPos(window);
+
+	processInput(delta);
 	assert(mesh.vertices[0] == -.2f);
 	assert(mesh.VAO != 0);
 	const static auto id4x4 = glm::mat4(1.);
 	Seconds currTime = glfwGetTime();
-	model.data = glm::rotate(id4x4, currTime * glm::radians(-55.f),
-		glm::vec3(.5f, 1.f, 0.f));
+	model.data = 
+		// glm::rotate(id4x4, currTime * glm::radians(-55.f),
+		// glm::vec3(.5f, 1.f, 0.f));
+		id4x4;
 	glUniformMatrix4fv(model.id, 1, GL_FALSE, glm::value_ptr(model.data));
-	LOG("Renderer::process(): 1\n");
-	// view = glm::lookAt(camera.pos, camera.getTarget(), camera.up);
-	// glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+
+	auto& camera = cameraU.data;
+	view.data = glm::lookAt(camera.pos,
+		camera.getTarget(),
+		camera.up);
+	glUniformMatrix4fv(view.id, 1, GL_FALSE, glm::value_ptr(view.data));
 
 /*		auto vertexBuffer = (float*)glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
 	vertexBuffer[25] = glm::sin(currTime * 2.)/2. + 1./2.;
@@ -208,7 +283,5 @@ void Renderer::process(Seconds delta, glm::vec4 clearColor) {
 //		glBindVertexArray(VAO);
 //		glBindBuffer(GL_ARRAY_BUFFER, VBO);
 //		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-	LOG("Renderer::process(): 2\n");
 	glDrawElements(GL_TRIANGLES, mesh.indices.size(), GL_UNSIGNED_INT, nullptr);
-	LOG("Renderer::process(): 3\n");
 }
