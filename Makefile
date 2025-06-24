@@ -1,15 +1,19 @@
 objects = build/texture.o build/shader.o build/glad.o build/stb_image.o \
-	build/renderer.o build/glm.hpp.gch
+	build/renderer.o build/glm.hpp.gch build/main.o
 
-window: $(objects)
-	@echo Compiling main and linking object files
-	g++ src/main.cpp build/**.o -o window -Iinclude -Ibuild -Llib -lglfw3 -lgdi32
+all: $(objects)
+	@echo Linking object files
+	g++ build/**.o -o window -Iinclude -Ibuild -Llib -lglfw3 -lgdi32
 	@./window
 
 clear:
 	@echo Cleaning build...
 	@rm -f build/**o build/glm.hpp.gch window.exe
 	@rmdir build
+
+build/main.o: src/main.cpp src/renderer.hpp | build
+	@echo Compiling main.cpp
+	g++ -c src/main.cpp -o build/main.o -Iinclude/
 
 build/renderer.o: src/renderer.cpp src/renderer.hpp src/logging.h | build
 	@echo Compiling renderer.cpp
