@@ -16,9 +16,12 @@ inline const char* getErrorName(GLenum error) {
 	}
 }
 
-#define LOG(...) printf(__VA_ARGS__)
-#define GLcall(x,...) x(__VA_ARGS__); LOG("glError: %s\n",\
-	getErrorName(glGetError()))
+#define LOGGING
 
-#undef LOG
-#define LOG(...)
+#ifdef LOGGING
+	#define LOG(...) printf(__VA_ARGS__)
+#else
+	#define LOG(...)
+#endif
+
+#define GLcall(x,...) x(__VA_ARGS__); LOG("glError: %s\n",getErrorName(glGetError()))
