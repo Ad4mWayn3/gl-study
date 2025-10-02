@@ -210,10 +210,12 @@ void Renderer::processInput(Seconds delta) {
 	auto roll = glm::cross(-cameraU.data.up, cameraU.data.right),
 		yaw = glm::cross(-cameraU.data.dir, cameraU.data.right),
 		pitch = glm::normalize(glm::cross(cameraU.data.pos, cameraU.data.up));
+
+	bool click = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS;
 	
-	if (mouseDelta.x != 0.f)
+	if (mouseDelta.x != 0.f && click)
 		cameraU.data.rotate(rotor(yaw, mouseDelta.x));
-	if (mouseDelta.y != 0.f)
+	if (mouseDelta.y != 0.f && click)
 		cameraU.data.rotate(rotor(pitch, mouseDelta.y));
 	
 	#define kpress(k) (glfwGetKey(window, k) == GLFW_PRESS)
