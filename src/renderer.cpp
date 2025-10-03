@@ -212,6 +212,9 @@ void Renderer::processInput(Seconds delta) {
 		pitch = glm::normalize(glm::cross(cameraU.data.pos, cameraU.data.up));
 
 	bool click = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS;
+
+	if (click) glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	else glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 	
 	if (mouseDelta.x != 0.f && click)
 		cameraU.data.rotate(rotor(yaw, mouseDelta.x));
@@ -252,11 +255,17 @@ void Renderer::process(Seconds delta, glm::vec4 clearColor) {
 	mouseDelta = mouseDelta / winR * 3.f;
 	mousePos = curPos(window);
 
+	int winSize[2];
+	glfwGetWindowSize(window, winSize, winSize+1);
+	glUniform2f(glGetUniformLocation(program.obj, "resolution"),
+		(float)winSize[0], (float)winSize[1]);
+
 	processInput(delta);
 	assert(mesh.vertices[0] == -.2f);
 	assert(mesh.VAO != 0);
 	const static auto id4x4 = glm::mat4(1.);
 	Seconds currTime = glfwGetTime();
+	glUniform1f(glGetUniformLocation(program.obj, "time"), currTime);
 	model.data = 
 		// glm::rotate(id4x4, currTime * glm::radians(-55.f),
 		// glm::vec3(.5f, 1.f, 0.f));

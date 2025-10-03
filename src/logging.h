@@ -16,7 +16,7 @@ inline const char* getErrorName(GLenum error) {
 	}
 }
 
-#define LOGGING
+//#define LOGGING
 
 #ifdef LOGGING
 	#define LOG(...) printf(__VA_ARGS__)
